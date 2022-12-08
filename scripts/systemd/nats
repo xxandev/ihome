@@ -13,7 +13,6 @@ if ! [ -d /sys/fs/cgroup/memory/system.slice ]; then
 echo "creating a service without restrictions"
 echo "" > /etc/systemd/system/nats-server.service
 cat <<EOT >> /etc/systemd/system/nats-server.service
-
 [Unit]
 Description=nats-server
 After=syslog.target 
@@ -30,14 +29,12 @@ KillMode=process
 
 [Install]
 WantedBy=multi-user.target
-
 EOT
 
 else 
 echo "creating a service with limited memory"
 echo "" > /etc/systemd/system/nats-server.service
 cat <<EOT >> /etc/systemd/system/nats-server.service
-
 [Unit]
 Description=nats-server
 After=syslog.target 
@@ -60,7 +57,6 @@ MemoryMax=100M
 
 [Install]
 WantedBy=multi-user.target
-
 EOT
 
 fi
@@ -68,94 +64,94 @@ fi
 #############################################################################################
 ### CREATE SCRIPT SERVICE STOP
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/stop-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/stop-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/stop-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/stop-nats.sh
 #!/bin/bash
 
 systemctl stop nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/stop-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/stop-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE START
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/start-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/start-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/start-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/start-nats.sh
 #!/bin/bash
 
 systemctl start nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/start-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/start-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE RESTART
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/restart-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/restart-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/restart-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/restart-nats.sh
 #!/bin/bash
 
 systemctl restart nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/restart-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/restart-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE STATUS
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/status-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/status-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/status-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/status-nats.sh
 #!/bin/bash
 
 systemctl status nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/status-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/status-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE JOURNAL
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/journal-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/journal-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/journal-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/journal-nats.sh
 #!/bin/bash
 
 journalctl -u nats-server.service -f
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/journal-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/journal-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE ENABLE
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/enable-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/enable-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/enable-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/enable-nats.sh
 #!/bin/bash
 
 systemctl enable nats-server
 systemctl start nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/enable-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/enable-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE DISABLE
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/disable-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/disable-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/disable-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/disable-nats.sh
 #!/bin/bash
 
 systemctl stop nats-server
 systemctl disable nats-server
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/disable-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/disable-nats.sh
 
 #############################################################################################
 ### CREATE SCRIPT SERVICE REMOVE
 #############################################################################################
-echo "" > $SCRIPTPATH/nats-scripts/remove-nats-server.sh
-cat <<EOT >> $SCRIPTPATH/nats-scripts/remove-nats-server.sh
+echo "" > $SCRIPTPATH/nats-scripts/remove-nats.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/remove-nats.sh
 #!/bin/bash
 
 systemctl stop nats-server
@@ -164,7 +160,7 @@ rm /etc/systemd/system/nats-server.service
 systemctl daemon-reload
 
 EOT
-chmod +x $SCRIPTPATH/nats-scripts/remove-nats-server.sh
+chmod +x $SCRIPTPATH/nats-scripts/remove-nats.sh
 
 #############################################################################################
 ### CREATE FILE SERVICE INFO
@@ -176,15 +172,15 @@ listen: 4222
 http: 4333
 jetstream: enabled
 
-authorization {
-users = [
-    {user: "xxandev", password: "XXanDevNats"}
-	{user: "tester", password: "qwertyuiop"}
-  ]
-}
-
 mqtt {
 	port:1883
+}
+
+authorization {
+  users = [
+    {user: "xxandev", password: "XXanDevNats"}
+    {user: "tester", password: "qwertyuiop"}
+  ]
 }
 
 EOT
