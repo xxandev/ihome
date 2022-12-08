@@ -6,6 +6,7 @@ DATE_STR=`date '+%Y_%m_%d'`
 
 echo $SCRIPTPATH/
 
+if ! [ -f $SCRIPTPATH/nats-server ]; then echo "nats-server not found"; sleep 5; exit; fi
 if [ -f /etc/systemd/system/nats-server.service ]; then echo "file exists"; sleep 5; exit; fi
 if ! [ -d $SCRIPTPATH/nats-scripts/ ]; then mkdir $SCRIPTPATH/nats-scripts; fi
 
