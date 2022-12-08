@@ -1,0 +1,5 @@
+#!/bin/bash
+echo $1
+systemctl stop $1
+systemctl disable $1
+systemctl daemon-reload

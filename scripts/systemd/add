@@ -1,0 +1,177 @@
+#!/bin/bash
+
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+DATE_STR=`date '+%Y_%m_%d'`
+
+echo $SCRIPTPATH/
+
+echo $1
+
+if [ -f /etc/systemd/system/$1.service ]; then echo "file exists"; sleep 5; exit; fi
+if ! [ -d $SCRIPTPATH/$1/ ]; then mkdir $SCRIPTPATH/$1-scripts; fi
+
+if ! [ -d /sys/fs/cgroup/memory/system.slice ]; then 
+echo "creating a service without restrictions"
+echo "" > /etc/systemd/system/$1.service
+cat <<EOT >> /etc/systemd/system/$1.service
+
+[Unit]
+Description=$1
+After=syslog.target 
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$SCRIPTPATH/
+ExecStart=$SCRIPTPATH/$1
+Restart=always
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
+EOT
+
+else 
+echo "creating a service with limited memory/swap"
+echo "" > /etc/systemd/system/$1.service
+cat <<EOT >> /etc/systemd/system/$1.service
+
+[Unit]
+Description=$1
+After=syslog.target 
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$SCRIPTPATH/
+ExecStart=$SCRIPTPATH/$1
+ExecStartPost=/bin/bash -c "echo 0 > /sys/fs/cgroup/memory/system.slice/$1.service/memory.swappiness"
+Restart=always
+RestartSec=10
+KillMode=process
+
+MemoryAccounting=true
+MemoryLimit=50M
+MemoryHigh=50M
+MemoryMax=50M
+
+[Install]
+WantedBy=multi-user.target
+
+EOT
+
+fi
+
+#############################################################################################
+### CREATE SCRIPT SERVICE STOP
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/stop-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/stop-$1.sh
+#!/bin/bash
+
+systemctl stop $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/stop-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE START
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/start-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/start-$1.sh
+#!/bin/bash
+
+systemctl start $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/start-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE RESTART
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/restart-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/restart-$1.sh
+#!/bin/bash
+
+systemctl restart $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/restart-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE STATUS
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/status-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/status-$1.sh
+#!/bin/bash
+
+systemctl status $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/status-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE JOURNAL
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/journal-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/journal-$1.sh
+#!/bin/bash
+
+journalctl -u $1.service -f
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/journal-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE ENABLE
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/enable-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/enable-$1.sh
+#!/bin/bash
+
+systemctl enable $1
+systemctl start $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/enable-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE DISABLE
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/disable-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/disable-$1.sh
+#!/bin/bash
+
+systemctl stop $1
+systemctl disable $1
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/disable-$1.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE REMOVE
+#############################################################################################
+echo "" > $SCRIPTPATH/$1-scripts/remove-$1.sh
+cat <<EOT >> $SCRIPTPATH/$1-scripts/remove-$1.sh
+#!/bin/bash
+
+systemctl stop $1
+systemctl disable $1
+rm /etc/systemd/system/$1.service
+systemctl daemon-reload
+
+EOT
+chmod +x $SCRIPTPATH/$1-scripts/remove-$1.sh
+
+#############################################################################################
+### START SERVICE
+#############################################################################################
+systemctl daemon-reload
+systemctl enable $1
+systemctl start $1
+systemctl status $1

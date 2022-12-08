@@ -1,0 +1,6 @@
+#!/bin/bash
+echo $1
+systemctl daemon-reload
+systemctl enable $1
+systemctl start $1
+systemctl status $1

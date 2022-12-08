@@ -1,0 +1,198 @@
+#!/bin/bash
+
+SCRIPT=$(readlink -f "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+DATE_STR=`date '+%Y_%m_%d'`
+
+echo $SCRIPTPATH/
+
+if [ -f /etc/systemd/system/nats-server.service ]; then echo "file exists"; sleep 5; exit; fi
+if ! [ -d $SCRIPTPATH/nats-scripts/ ]; then mkdir $SCRIPTPATH/nats-scripts; fi
+
+if ! [ -d /sys/fs/cgroup/memory/system.slice ]; then 
+echo "creating a service without restrictions"
+echo "" > /etc/systemd/system/nats-server.service
+cat <<EOT >> /etc/systemd/system/nats-server.service
+
+[Unit]
+Description=nats-server
+After=syslog.target 
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$SCRIPTPATH/
+ExecStart=$SCRIPTPATH/nats-server.bin -c nats-config.conf
+Restart=always
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+
+EOT
+
+else 
+echo "creating a service with limited memory"
+echo "" > /etc/systemd/system/nats-server.service
+cat <<EOT >> /etc/systemd/system/nats-server.service
+
+[Unit]
+Description=nats-server
+After=syslog.target 
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$SCRIPTPATH/
+ExecStart=$SCRIPTPATH/nats-server.bin -c nats-config.conf
+ExecStartPost=/bin/bash -c "echo 0 > /sys/fs/cgroup/memory/system.slice/nats-server.service/memory.swappiness"
+Restart=always
+RestartSec=10
+KillMode=process
+
+MemoryAccounting=true
+MemoryLimit=100M
+MemoryHigh=100M
+MemoryMax=100M
+
+[Install]
+WantedBy=multi-user.target
+
+EOT
+
+fi
+
+#############################################################################################
+### CREATE SCRIPT SERVICE STOP
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/stop-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/stop-nats-server.sh
+#!/bin/bash
+
+systemctl stop nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/stop-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE START
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/start-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/start-nats-server.sh
+#!/bin/bash
+
+systemctl start nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/start-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE RESTART
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/restart-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/restart-nats-server.sh
+#!/bin/bash
+
+systemctl restart nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/restart-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE STATUS
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/status-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/status-nats-server.sh
+#!/bin/bash
+
+systemctl status nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/status-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE JOURNAL
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/journal-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/journal-nats-server.sh
+#!/bin/bash
+
+journalctl -u nats-server.service -f
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/journal-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE ENABLE
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/enable-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/enable-nats-server.sh
+#!/bin/bash
+
+systemctl enable nats-server
+systemctl start nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/enable-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE DISABLE
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/disable-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/disable-nats-server.sh
+#!/bin/bash
+
+systemctl stop nats-server
+systemctl disable nats-server
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/disable-nats-server.sh
+
+#############################################################################################
+### CREATE SCRIPT SERVICE REMOVE
+#############################################################################################
+echo "" > $SCRIPTPATH/nats-scripts/remove-nats-server.sh
+cat <<EOT >> $SCRIPTPATH/nats-scripts/remove-nats-server.sh
+#!/bin/bash
+
+systemctl stop nats-server
+systemctl disable nats-server
+rm /etc/systemd/system/nats-server.service
+systemctl daemon-reload
+
+EOT
+chmod +x $SCRIPTPATH/nats-scripts/remove-nats-server.sh
+
+#############################################################################################
+### CREATE FILE SERVICE INFO
+#############################################################################################
+echo "" > $SCRIPTPATH/nats.conf
+cat <<EOT >> $SCRIPTPATH/nats.conf
+server_name: nats-mqtt-server
+listen: 4222
+http: 4333
+jetstream: enabled
+
+authorization {
+users = [
+    {user: "xxandev", password: "XXanDevNats"}
+	{user: "tester", password: "qwertyuiop"}
+  ]
+}
+
+mqtt {
+	port:1883
+}
+
+EOT
+
+#############################################################################################
+### START SERVICE
+#############################################################################################
+systemctl daemon-reload
+systemctl enable nats-server
+systemctl start nats-server
+systemctl status nats-server
